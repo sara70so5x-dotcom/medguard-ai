@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 
-# ================== PAGE CONFIG ==================
+# ================== PAGE ==================
 st.set_page_config(
     page_title="MedGuard AI",
     page_icon="🛡️",
@@ -12,38 +12,42 @@ st.set_page_config(
 # ================== STYLE ==================
 st.markdown("""
 <style>
-body { background-color: #f8fafc; }
-.card {
-    padding: 22px;
+body {
+    background-color: #020617;
+    color: #e5e7eb;
+}
+.block {
+    padding: 18px;
     border-radius: 14px;
-    background-color: white;
-    border: 1px solid #e2e8f0;
-    margin-bottom: 18px;
+    background-color: #020617;
+    border: 1px solid #1e293b;
+    margin-bottom: 16px;
 }
 .header {
-    font-size: 28px;
-    font-weight: 700;
-    color: #0f172a;
+    font-size: 26px;
+    font-weight: 600;
+    color: #e5e7eb;
 }
-.subtitle {
-    font-size: 15px;
-    color: #475569;
+.sub {
+    font-size: 14px;
+    color: #9ca3af;
 }
 .label {
-    font-weight: 600;
-    color: #0f172a;
-}
-.note {
     font-size: 13px;
-    color: #64748b;
+    color: #9ca3af;
 }
-.badge {
-    display: inline-block;
-    padding: 6px 12px;
-    border-radius: 999px;
-    background-color: #e0f2fe;
-    color: #0369a1;
+.value {
+    font-size: 18px;
+    font-weight: 500;
+}
+.muted {
+    color: #9ca3af;
     font-size: 13px;
+}
+.divider {
+    height: 1px;
+    background-color: #1e293b;
+    margin: 12px 0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -51,41 +55,23 @@ body { background-color: #f8fafc; }
 # ================== HEADER ==================
 st.markdown("<div class='header'>🛡️ MedGuard AI</div>", unsafe_allow_html=True)
 st.markdown(
-    "<div class='subtitle'>"
-    "AI-assisted clinical decision support for early detection of patient deterioration<br>"
-    "<span class='note'>Supports — not replaces — physician judgment.</span>"
+    "<div class='sub'>"
+    "Clinical decision support assistant for early risk awareness<br>"
+    "Supports physician judgment — does not provide diagnoses or treatment decisions."
     "</div>",
     unsafe_allow_html=True
 )
 
-# ================== DISCLAIMER ==================
-st.markdown("""
-<div class="card">
-<span class="badge">Clinical Decision Support Assistant</span><br><br>
-MedGuard AI analyzes temporal patterns in vital signs to highlight potential clinical risk.
-It is designed to <b>support situational awareness</b> and does not provide diagnoses
-or treatment decisions.
-<br><br>
-<b>Final clinical decisions remain the responsibility of the treating physician.</b>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
 
-# ================== CONTROLS ==================
-st.subheader("Analysis Context")
-
+# ================== CONTEXT ==================
 col1, col2 = st.columns(2)
 with col1:
-    department = st.selectbox(
-        "Clinical Setting",
-        ["General Ward", "Emergency Department", "ICU"]
-    )
+    department = st.selectbox("Clinical Setting", ["Ward", "Emergency", "ICU"])
 with col2:
-    hours_window = st.selectbox(
-        "Data Window",
-        ["Last 6 hours", "Last 12 hours", "Last 24 hours"]
-    )
+    window = st.selectbox("Analysis Window", ["Last 6 hours", "Last 12 hours", "Last 24 hours"])
 
-st.markdown("<span class='badge'>🔕 Low alert frequency mode enabled</span>", unsafe_allow_html=True)
+st.markdown("<div class='muted'>Low alert frequency mode enabled</div>", unsafe_allow_html=True)
 
 # ================== DATA ==================
 def generate_patient_data(hours=48):
@@ -116,74 +102,53 @@ if st.button("Analyze Patient Trends"):
     data["risk_score"] = data.apply(calculate_risk, axis=1)
     last = data.iloc[-1]
 
-    # Confidence (simulated uncertainty)
     confidence = round(np.random.uniform(0.75, 0.9), 2)
 
-    # ================== SNAPSHOT ==================
+    # ================== SUMMARY ==================
     st.markdown("""
-    <div class="card">
-    <span class="label">Patient Trend Summary</span><br><br>
-    • Heart rate: sustained upward trend<br>
-    • Blood pressure: gradual decline<br>
-    • Oxygen saturation: mild downward shift<br>
-    • Temperature: stable
+    <div class="block">
+        <div class="label">Patient Trend Summary</div>
+        <div class="value">
+        Heart rate rising · Blood pressure declining · SpO₂ mildly reduced · Temperature stable
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ================== RISK INSIGHT ==================
+    # ================== RISK ==================
     st.markdown(f"""
-    <div class="card">
-    <span class="label">AI Risk Insight</span><br><br>
-    Estimated deterioration risk score: <b>{round(last["risk_score"], 2)}</b><br>
-    AI confidence level: <b>{confidence}</b><br><br>
-    This assessment reflects similarity to historical deterioration patterns
-    observed in comparable clinical contexts.
+    <div class="block">
+        <div class="label">AI Risk Awareness</div>
+        <div class="value">Estimated risk level: {round(last["risk_score"], 2)}</div>
+        <div class="muted">Model confidence: {confidence}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ================== XAI TABLE ==================
-    st.markdown("<div class='card'><span class='label'>Trend Contribution Analysis</span><br><br>", unsafe_allow_html=True)
-    contrib = pd.DataFrame({
-        "Parameter": ["Heart Rate", "Blood Pressure", "SpO₂", "Temperature"],
-        "Trend": ["↑ Rising", "↓ Dropping", "↓ Mild decline", "Stable"],
-        "Contribution": ["High", "Medium", "Low", "Minimal"]
-    })
-    st.table(contrib)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # ================== SUPPORTIVE GUIDANCE ==================
+    # ================== EXPLANATION ==================
     st.markdown("""
-    <div class="card">
-    <span class="label">Supportive Clinical Considerations</span><br><br>
-    In similar cases, clinicians often considered:
-    <ul>
-        <li>Closer monitoring of vital signs</li>
-        <li>Re-evaluation of laboratory results</li>
-        <li>Early senior clinical review</li>
-    </ul>
-    These are <b>not recommendations</b>, but commonly observed actions.
+    <div class="block">
+        <div class="label">Why risk may be increasing</div>
+        <div class="value">
+        • Sustained rise in heart rate<br>
+        • Gradual drop in systolic blood pressure<br>
+        • Pattern similarity to prior deterioration cases
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ================== TIMING ==================
+    # ================== SUPPORT ==================
     st.markdown("""
-    <div class="card">
-    <span class="label">Time-Sensitive Insight</span><br><br>
-    Historical data suggests that earlier evaluation within the next
-    <b>90 minutes</b> was associated with improved outcomes in similar scenarios.
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ================== SAFETY ==================
-    st.markdown("""
-    <div class="card">
-    <span class="label">What this system does NOT do</span><br><br>
-    • Does not diagnose medical conditions<br>
-    • Does not prescribe or recommend treatments<br>
-    • Does not override clinical judgment
+    <div class="block">
+        <div class="label">Supportive clinical insight</div>
+        <div class="value">
+        In comparable cases, earlier review and closer monitoring were often associated
+        with improved outcomes.
+        </div>
+        <div class="muted">
+        This is contextual information — not a clinical directive.
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
     # ================== TRAJECTORY ==================
-    st.subheader("Risk Trend Over Time")
+    st.markdown("<div class='label'>Risk trend over time</div>", unsafe_allow_html=True)
     st.line_chart(data.set_index("hour")["risk_score"])
