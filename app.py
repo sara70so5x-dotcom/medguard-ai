@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # =========================
-# Safe Clinical Dark Style
+# Clinical Style (Stable)
 # =========================
 st.markdown("""
 <style>
@@ -20,60 +20,61 @@ html, body {
     background-color: #10161c;
     color: #e2e8f0;
 }
-
 h1, h2, h3 {
     color: #f8fafc;
 }
-
 .card {
     background-color: #1b2430;
-    padding: 24px;
-    border-radius: 16px;
-    margin-bottom: 24px;
+    padding: 22px;
+    border-radius: 14px;
+    margin-bottom: 20px;
     border: 1px solid #273142;
 }
-
 .badge-low {
     background-color: #1f7a55;
-    padding: 12px;
-    border-radius: 10px;
+    padding: 10px;
+    border-radius: 8px;
     text-align: center;
     font-weight: 600;
 }
-
 .badge-med {
     background-color: #8f6b1b;
-    padding: 12px;
-    border-radius: 10px;
+    padding: 10px;
+    border-radius: 8px;
     text-align: center;
     font-weight: 600;
 }
-
 .badge-high {
     background-color: #374151;
-    padding: 12px;
-    border-radius: 10px;
+    padding: 10px;
+    border-radius: 8px;
     text-align: center;
     font-weight: 600;
 }
-
 .note {
     font-size: 0.85rem;
     color: #94a3b8;
+}
+.alert {
+    background-color: #111827;
+    border-left: 4px solid #fbbf24;
+    padding: 16px;
+    border-radius: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================
-# Header
+# System Header (ربطه بالجهاز)
 # =========================
-st.title("MedGuard AI")
-st.caption("Clinical Intelligence for Early Risk Awareness")
+st.title("MedGuard AI – Continuous Patient Monitoring System")
+st.caption("Real-time physiological signals • AI-assisted early clinical alerts")
 
 st.markdown("""
 <div class="note">
-MedGuard AI provides probabilistic insights to support clinical awareness.  
-It does NOT provide diagnoses, treatment recommendations, or override physician judgment.
+This system continuously monitors vital signs from bedside and wearable devices
+to provide early awareness of patient deterioration.
+It supports — and does not replace — clinical judgment.
 </div>
 """, unsafe_allow_html=True)
 
@@ -89,18 +90,15 @@ def generate_patient_data(hours=48):
         "spo2": np.random.normal(97, 1.2, hours),
         "temperature": np.random.normal(37, 0.3, hours)
     })
-
-    # Gradual deterioration pattern
     df.loc[30:, "heart_rate"] += np.linspace(0, 25, hours - 30)
     df.loc[30:, "systolic_bp"] -= np.linspace(0, 30, hours - 30)
     df.loc[30:, "spo2"] -= np.linspace(0, 5, hours - 30)
-
     return df
 
 data = generate_patient_data()
 
 # =========================
-# Machine Learning Model
+# ML Model (Scikit-learn)
 # =========================
 X = data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
 y = (X["heart_rate"] > 100).astype(int)
@@ -134,11 +132,17 @@ with col1:
     st.subheader("Clinical Trajectory Insight")
     st.metric("Current Risk Probability", f"{current_risk:.2f}")
     st.markdown(f"<div class='{badge}'>{level}</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
+    # ===== Alert Notification =====
+    st.markdown("<div class='alert'>", unsafe_allow_html=True)
     st.markdown("""
-    **Decision Support Insight**  
-    Based on historical ICU patterns, similar trajectories showed improved outcomes
-    when clinical review occurred **6–8 hours earlier** before peak deterioration.
+    **Early Clinical Alert**  
+    Patient trajectory is deviating from stable patterns.  
+    In similar ICU cases, earlier clinical review **6–8 hours sooner**
+    was associated with improved outcomes.
+    
+    *This is an awareness alert, not a treatment directive.*
     """)
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -147,6 +151,23 @@ with col2:
     st.subheader("Risk Evolution Over Time")
     st.line_chart(data.set_index("hour")["risk"])
     st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================
+# Decision Rationale (تفسير القرار)
+# =========================
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.subheader("Decision Rationale – Why this alert was raised")
+
+st.markdown("""
+This alert was triggered due to a **pattern-level change** observed across
+multiple vital signs, rather than a single abnormal reading:
+
+- Gradual and sustained increase in heart rate  
+- Concurrent decline in systolic blood pressure  
+- Progressive reduction in oxygen saturation  
+- Trajectory similarity to prior ICU deterioration cases
+""")
+st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
 # Explainable AI
@@ -161,8 +182,8 @@ st.bar_chart(coeff)
 
 st.markdown("""
 **Interpretation:**  
-The model indicates that rising heart rate and declining systolic blood pressure
-are the strongest contributors to the observed risk trajectory.
+The model identifies heart rate and systolic blood pressure trends
+as the primary contributors to the current risk signal.
 """)
 st.markdown("</div>", unsafe_allow_html=True)
 
@@ -184,7 +205,7 @@ st.markdown("</div>", unsafe_allow_html=True)
 # =========================
 st.markdown("""
 <div class="note">
-This prototype demonstrates how explainable machine learning can support
-early clinical awareness without replacing physician judgment.
+MedGuard AI demonstrates how explainable machine learning can function
+as an early medical alerting layer within continuous patient monitoring systems.
 </div>
 """, unsafe_allow_html=True)
