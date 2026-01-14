@@ -6,10 +6,7 @@ from sklearn.linear_model import LogisticRegression
 # =========================
 # Page Config
 # =========================
-st.set_page_config(
-    page_title="MedGuard AI",
-    layout="wide"
-)
+st.set_page_config(page_title="MedGuard AI", layout="wide")
 
 # =========================
 # Clinical Style
@@ -51,24 +48,24 @@ h1, h2, h3 {
     text-align: center;
     font-weight: 600;
 }
-.note {
-    font-size: 0.85rem;
-    color: #94a3b8;
-}
 .alert {
     background-color: #111827;
     border-left: 4px solid #fbbf24;
     padding: 14px;
     border-radius: 10px;
 }
+.note {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
 </style>
 """, unsafe_allow_html=True)
 
 # =========================
-# Header (مختصر)
+# Header
 # =========================
 st.title("MedGuard AI")
-st.caption("Continuous patient monitoring • AI-assisted early alerts")
+st.caption("Continuous patient monitoring • AI-assisted early clinical alerts")
 
 # =========================
 # Data Simulation
@@ -120,57 +117,70 @@ else:
 col1, col2 = st.columns([1.2, 2])
 
 with col1:
+    # ---- Risk Snapshot ----
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.subheader("Risk Snapshot")
     st.metric("Current Risk Probability", f"{current_risk:.2f}")
     st.markdown(f"<div class='{badge}'>{level}</div>", unsafe_allow_html=True)
+
+    with st.expander("What does this risk level indicate?"):
+        st.markdown("""
+        This probability reflects the likelihood of early clinical deterioration
+        based on temporal patterns across multiple vital signs.
+        It is not a diagnosis.
+        """)
+
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Alert (مختصر)
+    # ---- Alert ----
     st.markdown("<div class='alert'>", unsafe_allow_html=True)
     st.markdown("""
     **Early Clinical Alert**  
-    Patient trajectory shows early signs of deterioration.  
-    *Earlier review was associated with better outcomes.*
+    Patient trajectory shows early signs of deterioration.
     """)
+    with st.expander("Why was this alert triggered?"):
+        st.markdown("""
+        • Sustained increase in heart rate  
+        • Declining systolic blood pressure  
+        • Progressive reduction in oxygen saturation  
+        • Similar patterns observed in prior ICU deterioration cases
+        """)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col2:
+    # ---- Risk Trend ----
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Risk Trend")
+    st.subheader("Risk Trend Over Time")
     st.line_chart(data.set_index("hour")["risk"])
+
+    with st.expander("How to interpret this trend?"):
+        st.markdown("""
+        A rising trajectory indicates accumulating risk over time.
+        The model focuses on trend behavior rather than isolated values.
+        """)
     st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
-# Expandable Sections
+# Explainable AI
 # =========================
-with st.expander("Why was this alert raised?"):
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.subheader("Explainable AI")
+
+coeff = pd.Series(model.coef_[0], index=X.columns)
+coeff = coeff.abs().sort_values(ascending=False)
+st.bar_chart(coeff)
+
+with st.expander("Model explanation"):
     st.markdown("""
-    • Rising heart rate over time  
-    • Declining systolic blood pressure  
-    • Gradual reduction in oxygen saturation  
-    • Pattern similarity to prior ICU deterioration cases
+    Heart rate and systolic blood pressure contributed most to the current risk signal,
+    indicating early hemodynamic instability patterns.
     """)
 
-with st.expander("Explainable AI – Model Insight"):
-    coeff = pd.Series(model.coef_[0], index=X.columns)
-    coeff = coeff.abs().sort_values(ascending=False)
-    st.bar_chart(coeff)
-    st.caption(
-        "Heart rate and blood pressure trends contributed most to the current risk signal."
-    )
-
-with st.expander("Clinical Data Sources"):
-    st.markdown("""
-    • **PhysioNet Sepsis Challenge 2019** – ICU time-series data  
-    • **eICU Collaborative Research Database** – Multi-center validation  
-    • **NIH ChestX-ray14 Dataset** – Future multimodal expansion
-    """)
+st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
 # Footer
 # =========================
 st.caption(
-    "MedGuard AI is a clinical decision-support assistant. "
-    "It does not provide diagnoses or treatment recommendations."
+    "MedGuard AI is a clinical decision-support assistant and does not replace medical judgment."
 )
