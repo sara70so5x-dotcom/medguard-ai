@@ -113,8 +113,7 @@ else:
     data = generate_patient_data(level="severe")
 
 # =========================
-# GLOBAL TRAINING DATASET
-# (Fixes the ValueError)
+# Global Training Dataset
 # =========================
 def generate_training_data(samples=400):
     np.random.seed(1)
@@ -170,40 +169,40 @@ with col1:
     st.subheader("Risk Snapshot")
     st.metric("Current Risk Probability", f"{current_risk:.2f}")
     st.markdown(f"<div class='{badge}'>{level}</div>", unsafe_allow_html=True)
-
-    with st.expander("What does this mean?"):
-        st.markdown("""
-        This probability reflects the likelihood of early clinical deterioration
-        based on evolving vital sign patterns.
-        """)
-
     st.markdown("</div>", unsafe_allow_html=True)
 
     if level != "Low Risk":
         st.markdown("<div class='alert'>", unsafe_allow_html=True)
         st.markdown("""
         **Clinical Alert**  
-        Patient trajectory shows signs of deterioration.
+        Patient trajectory indicates ongoing physiological deterioration.
         """)
-        with st.expander("Why was this alert triggered?"):
-            st.markdown("""
-            • Rising heart rate trend  
-            • Declining blood pressure  
-            • Oxygen saturation reduction  
-            • Pattern similarity to historical ICU cases
-            """)
         st.markdown("</div>", unsafe_allow_html=True)
 
 with col2:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Risk Trend Over Time")
+    st.subheader("Risk Trend")
     st.line_chart(data.set_index("hour")["risk"])
 
-    with st.expander("How to interpret this trend?"):
-        st.markdown("""
-        Stable patients maintain flat risk trajectories,
-        while early and severe cases show progressive escalation.
-        """)
+    with st.expander("What is happening to the patient?"):
+        if level == "Low Risk":
+            st.markdown("""
+            The patient’s vital signs remain stable and within expected ranges.
+            There is no evidence of physiological stress or instability at this time.
+            """)
+        elif level == "Moderate Risk":
+            st.markdown("""
+            The patient is showing **early signs of physiological stress**.
+            Gradual increases in heart rate and mild blood pressure reduction
+            suggest the beginning of clinical deterioration.
+            """)
+        else:
+            st.markdown("""
+            The patient is experiencing **significant physiological instability**.
+            Rapid heart rate escalation, declining blood pressure, and reduced
+            oxygen saturation indicate a high likelihood of imminent deterioration
+            if the current trajectory continues.
+            """)
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -217,10 +216,10 @@ coeff = pd.Series(model.coef_[0], index=X_train.columns)
 coeff = coeff.abs().sort_values(ascending=False)
 st.bar_chart(coeff)
 
-with st.expander("Model explanation"):
+with st.expander("Why did the model raise this risk?"):
     st.markdown("""
-    Heart rate and systolic blood pressure trends are the strongest contributors
-    differentiating stable, early, and severe deterioration trajectories.
+    The model identified heart rate acceleration and declining systolic
+    blood pressure as the strongest contributors to the current risk signal.
     """)
 
 st.markdown("</div>", unsafe_allow_html=True)
