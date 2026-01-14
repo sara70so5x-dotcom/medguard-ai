@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ===============================
-# Global Styling (Clean / Clinical)
+# Styling (Clinical / Clean)
 # ===============================
 st.markdown("""
 <style>
@@ -101,12 +101,12 @@ st.markdown("""
 <h1>MedGuard AI</h1>
 <p class="note">
 Clinical Early Warning System (Decision Support Only)<br>
-Supports clinicians in identifying early physiological deterioration. Final decisions remain with the clinician.
+Supports clinicians in identifying early physiological deterioration.
 </p>
 """, unsafe_allow_html=True)
 
 # ===============================
-# Scenario Selection
+# Scenario Selector
 # ===============================
 scenario = st.selectbox(
     "Patient Scenario",
@@ -118,7 +118,7 @@ scenario = st.selectbox(
 # ===============================
 def generate_patient_data(hours=48, mode="stable"):
     np.random.seed(42)
-    data = pd.DataFrame({
+    df = pd.DataFrame({
         "hour": range(hours),
         "heart_rate": np.random.normal(78, 5, hours),
         "systolic_bp": np.random.normal(125, 8, hours),
@@ -127,17 +127,17 @@ def generate_patient_data(hours=48, mode="stable"):
     })
 
     if mode == "early":
-        data.loc[28:, "heart_rate"] += np.linspace(0, 18, hours - 28)
-        data.loc[28:, "systolic_bp"] -= np.linspace(0, 15, hours - 28)
-        data.loc[28:, "spo2"] -= np.linspace(0, 3, hours - 28)
+        df.loc[28:, "heart_rate"] += np.linspace(0, 18, hours - 28)
+        df.loc[28:, "systolic_bp"] -= np.linspace(0, 15, hours - 28)
+        df.loc[28:, "spo2"] -= np.linspace(0, 3, hours - 28)
 
     if mode == "severe":
-        data.loc[20:, "heart_rate"] += np.linspace(10, 35, hours - 20)
-        data.loc[20:, "systolic_bp"] -= np.linspace(10, 45, hours - 20)
-        data.loc[20:, "spo2"] -= np.linspace(3, 9, hours - 20)
-        data.loc[20:, "temperature"] += np.linspace(0.3, 1.2, hours - 20)
+        df.loc[20:, "heart_rate"] += np.linspace(10, 35, hours - 20)
+        df.loc[20:, "systolic_bp"] -= np.linspace(10, 45, hours - 20)
+        df.loc[20:, "spo2"] -= np.linspace(3, 9, hours - 20)
+        df.loc[20:, "temperature"] += np.linspace(0.3, 1.2, hours - 20)
 
-    return data
+    return df
 
 mode = (
     "stable" if scenario == "Stable Patient"
@@ -173,7 +173,6 @@ data["risk_trend"] = model.predict_proba(
     data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
 )[:, 1]
 
-# Scenario-based final risk
 risk_score = (
     0.25 if scenario == "Stable Patient"
     else 0.55 if scenario == "Early Deterioration"
@@ -189,7 +188,7 @@ if risk_score < 0.35:
     alert_class = "alert-low"
     alert_text = (
         "Physiological parameters remain within expected ranges. "
-        "No significant deviation from baseline trends is observed at this time."
+        "No significant deviation from baseline trends is observed."
     )
 
 elif risk_score < 0.7:
@@ -197,8 +196,8 @@ elif risk_score < 0.7:
     badge = "badge-med"
     alert_class = "alert-med"
     alert_text = (
-        "Gradual changes in vital signs indicate early physiological stress. "
-        "The pattern suggests emerging instability that may progress if trends persist."
+        "Gradual deviations from baseline suggest emerging physiological stress. "
+        "Continued monitoring is advised."
     )
 
 else:
@@ -206,8 +205,7 @@ else:
     badge = "badge-high"
     alert_class = "alert-high"
     alert_text = (
-        "Sustained deviations from baseline indicate significant physiological deterioration. "
-        "The observed pattern is consistent with high-risk trajectories seen in prior cases."
+        "Sustained and progressive deviations indicate high risk of clinical deterioration."
     )
 
 # ===============================
@@ -230,25 +228,36 @@ with right:
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ===============================
-# Clinical Insight Summary
+# Clinical Interpretation (WITH TRENDS)
 # ===============================
 baseline = data.iloc[:12].mean()
 current = data.iloc[-1]
 
+hr_change = ((current.heart_rate / baseline.heart_rate) - 1) * 100
+bp_change = baseline.systolic_bp - current.systolic_bp
+spo2_change = baseline.spo2 - current.spo2
+
 st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.subheader("Clinical Interpretation")
 
-st.write(
-    "Recent trends show measurable deviations from the patient's baseline physiology. "
-    "These changes are driven primarily by shifts in cardiovascular stability and oxygenation, "
-    "which together influence the overall risk trajectory."
-)
+if hr_change > 5:
+    st.write(f"Heart rate demonstrates a sustained upward trend (+{hr_change:.1f}% from baseline).")
+else:
+    st.write("Heart rate remains relatively stable compared to baseline.")
+
+if bp_change > 5:
+    st.write(f"Systolic blood pressure shows a downward trend (-{bp_change:.1f} mmHg from baseline).")
+else:
+    st.write("Systolic blood pressure remains within baseline range.")
+
+if spo2_change > 1:
+    st.write(f"Oxygen saturation shows a gradual decline (-{spo2_change:.1f}% from baseline).")
+else:
+    st.write("Oxygen saturation remains stable.")
 
 st.write(
-    f"Compared to baseline, heart rate has increased by "
-    f"{((current.heart_rate / baseline.heart_rate) - 1) * 100:.1f}%, "
-    f"while systolic blood pressure has decreased by "
-    f"{baseline.systolic_bp - current.systolic_bp:.1f} mmHg."
+    "The combined trajectory of these trends informs the overall risk assessment "
+    "and reflects the patient’s evolving physiological stability."
 )
 
 st.markdown("</div>", unsafe_allow_html=True)
@@ -258,8 +267,8 @@ st.markdown("</div>", unsafe_allow_html=True)
 # ===============================
 with st.expander("Clinical Foresight (Optional)"):
     st.write(
-        "If current trends continue, the patient may transition to a higher severity state "
-        "within the next 6–12 hours. Continued monitoring and clinical correlation are advised."
+        "If current trends persist, progression to a higher severity state may occur "
+        "within the next 6–12 hours. Clinical correlation is recommended."
     )
 
 # ===============================
