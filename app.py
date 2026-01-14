@@ -2,6 +2,10 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+
 # ================== PAGE CONFIG ==================
 st.set_page_config(
     page_title="MedGuard AI",
@@ -19,7 +23,6 @@ body {
 .header {
     font-size: 26px;
     font-weight: 600;
-    color: #e5e7eb;
 }
 .subheader {
     font-size: 14px;
@@ -36,16 +39,11 @@ body {
 .big {
     font-size: 32px;
     font-weight: 600;
+    color: #60a5fa;
 }
 .label {
     font-size: 13px;
     color: #9ca3af;
-}
-.value {
-    font-size: 16px;
-}
-.accent {
-    color: #60a5fa;
 }
 .meta {
     font-size: 13px;
@@ -58,7 +56,7 @@ body {
 st.markdown("<div class='header'>🛡️ MedGuard AI</div>", unsafe_allow_html=True)
 st.markdown(
     "<div class='subheader'>"
-    "Clinical decision support assistant — enhances awareness, does not direct care."
+    "Clinical decision support assistant — supports physician awareness, not clinical decisions."
     "</div>",
     unsafe_allow_html=True
 )
@@ -70,28 +68,58 @@ with col1:
 with col2:
     st.selectbox("Analysis Window", ["Last 6 hours", "Last 12 hours", "Last 24 hours"])
 
-# ================== DATA ==================
-def generate_patient_data(hours=48):
+# ================== DATA GENERATION ==================
+def generate_dataset(n=800):
     np.random.seed(42)
+
+    heart_rate = np.random.normal(85, 10, n)
+    systolic_bp = np.random.normal(120, 12, n)
+    spo2 = np.random.normal(97, 1.5, n)
+    temperature = np.random.normal(37.1, 0.4, n)
+
+    # Synthetic deterioration rule (for training only)
+    deterioration = (
+        (heart_rate > 100).astype(int)
+        + (systolic_bp < 100).astype(int)
+        + (spo2 < 94).astype(int)
+        + (temperature > 38).astype(int)
+    ) >= 2
+
     data = pd.DataFrame({
-        "hour": range(hours),
-        "heart_rate": np.random.normal(85, 8, hours),
-        "systolic_bp": np.random.normal(120, 10, hours),
-        "spo2": np.random.normal(97, 1.2, hours),
-        "temperature": np.random.normal(37.1, 0.3, hours)
+        "heart_rate": heart_rate,
+        "systolic_bp": systolic_bp,
+        "spo2": spo2,
+        "temperature": temperature,
+        "deterioration": deterioration.astype(int)
     })
-    data.loc[30:, "heart_rate"] += np.linspace(0, 25, hours - 30)
-    data.loc[30:, "systolic_bp"] -= np.linspace(0, 20, hours - 30)
-    data.loc[30:, "spo2"] -= np.linspace(0, 3, hours - 30)
+
     return data
 
-def calculate_risk(row):
-    risk = 0
-    if row["heart_rate"] > 100: risk += 0.3
-    if row["systolic_bp"] < 100: risk += 0.3
-    if row["spo2"] < 94: risk += 0.25
-    if row["temperature"] > 38: risk += 0.15
-    return min(risk, 1.0)
+# ================== MODEL TRAINING ==================
+def train_model():
+    data = generate_dataset()
+
+    X = data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
+    y = data["deterioration"]
+
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("model", LogisticRegression())
+    ])
+
+    pipeline.fit(X, y)
+    return pipeline
+
+model = train_model()
+
+# ================== LIVE PATIENT DATA ==================
+def generate_patient_data():
+    return {
+        "heart_rate": np.random.normal(110, 5),
+        "systolic_bp": np.random.normal(95, 5),
+        "spo2": np.random.normal(93, 1),
+        "temperature": np.random.normal(37.8, 0.3)
+    }
 
 def risk_label(score):
     if score < 0.4:
@@ -103,46 +131,39 @@ def risk_label(score):
 
 # ================== ACTION ==================
 if st.button("Review Patient Risk"):
-    data = generate_patient_data()
-    data["risk_score"] = data.apply(calculate_risk, axis=1)
-    last = data.iloc[-1]
+    patient = generate_patient_data()
 
-    score = round(last["risk_score"], 2)
-    label = risk_label(score)
+    X_live = pd.DataFrame([patient])
+    risk_score = model.predict_proba(X_live)[0][1]
+
+    label = risk_label(risk_score)
     confidence = round(np.random.uniform(0.78, 0.9), 2)
 
     # ================== CORE INSIGHT ==================
     st.markdown(f"""
     <div class="panel">
         <div class="label">AI Risk Awareness</div>
-        <div class="big accent">Risk Level: {score} ({label})</div>
+        <div class="big">Risk Level: {round(risk_score, 2)} ({label})</div>
         <div class="meta">Model confidence: {confidence}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ================== WHY ==================
+    # ================== EXPLANATION ==================
     st.markdown("""
     <div class="panel">
         <div class="label">Why risk may be increasing</div>
-        <div class="value">
-        • Sustained rise in heart rate<br>
-        • Gradual decline in systolic blood pressure<br>
-        • Similar trajectory observed in prior deterioration cases
-        </div>
+        • Elevated heart rate<br>
+        • Low systolic blood pressure<br>
+        • Reduced oxygen saturation<br>
+        • Combined pattern observed in prior deterioration cases
     </div>
     """, unsafe_allow_html=True)
 
-    # ================== CONTEXT ==================
+    # ================== SAFETY ==================
     st.markdown("""
     <div class="panel">
-        <div class="label">Clinical context</div>
-        <div class="value">
-        In comparable cases, earlier clinical review and closer monitoring
-        were commonly associated with improved outcomes.
-        </div>
+        <div class="label">System boundaries</div>
+        This output represents a probabilistic risk signal based on historical patterns.
+        It does not provide diagnoses, treatment recommendations, or override clinical judgment.
     </div>
     """, unsafe_allow_html=True)
-
-    # ================== TRAJECTORY ==================
-    st.markdown("<div class='label'>Risk trend over time</div>", unsafe_allow_html=True)
-    st.line_chart(data.set_index("hour")["risk_score"])
