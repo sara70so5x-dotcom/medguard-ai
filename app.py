@@ -4,18 +4,23 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
 # ===============================
-# Page Config
+# Page Config (Web App Mode)
 # ===============================
 st.set_page_config(
     page_title="MedGuard AI",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
 # ===============================
-# Styling (Dark Clinical UI)
+# Hide Streamlit UI
 # ===============================
 st.markdown("""
 <style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
 html, body {
     background-color: #0b1220;
     color: #e5e7eb;
@@ -66,23 +71,24 @@ h1, h2, h3 {
 """, unsafe_allow_html=True)
 
 # ===============================
-# Header
+# App Header (Website Style)
 # ===============================
-st.title("MedGuard AI")
-st.caption(
-    "AI-assisted early warning system for continuous patient monitoring. "
-    "This system supports clinical awareness and does not replace medical judgment."
-)
+st.markdown("""
+<h1 style="margin-bottom:0;">MedGuard AI</h1>
+<p class="note">
+AI-assisted early warning system for continuous patient monitoring
+</p>
+""", unsafe_allow_html=True)
 
 # ===============================
 # Scenario Selector
 # ===============================
 scenario = st.selectbox(
-    "Select patient scenario",
+    "Patient Scenario",
     [
-        "Patient A – Stable",
-        "Patient B – Early Deterioration",
-        "Patient C – Critical Condition"
+        "Stable Patient",
+        "Early Deterioration",
+        "Critical Condition"
     ]
 )
 
@@ -113,14 +119,14 @@ def generate_patient_data(hours=48, mode="stable"):
     return df
 
 if "Stable" in scenario:
-    data = generate_patient_data(mode="stable")
+    data = generate_patient_data("stable")
 elif "Early" in scenario:
-    data = generate_patient_data(mode="early")
+    data = generate_patient_data("early")
 else:
-    data = generate_patient_data(mode="severe")
+    data = generate_patient_data("severe")
 
 # ===============================
-# Train Simple Clinical Model
+# Train Model (Global)
 # ===============================
 def generate_training_data(samples=400):
     rows = []
@@ -130,10 +136,8 @@ def generate_training_data(samples=400):
         bp = np.random.normal(120, 20)
         spo2 = np.random.normal(96, 3)
         temp = np.random.normal(37, 0.6)
-
         label = int((hr > 100) or (bp < 95) or (spo2 < 92))
         rows.append([hr, bp, spo2, temp, label])
-
     return pd.DataFrame(
         rows,
         columns=["heart_rate", "systolic_bp", "spo2", "temperature", "label"]
@@ -147,25 +151,23 @@ model = LogisticRegression()
 model.fit(X_train, y_train)
 
 # ===============================
-# Risk Prediction
+# Prediction
 # ===============================
 X_patient = data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
 data["risk"] = model.predict_proba(X_patient)[:, 1]
 current_risk = data.iloc[-1]["risk"]
 
 # ===============================
-# Risk Levels (CLEAR DIFFERENCE)
+# Risk Levels
 # ===============================
 if current_risk < 0.35:
     level = "Stable"
     badge = "badge-low"
     alert_class = "alert-low"
-
 elif current_risk < 0.7:
     level = "Early Deterioration"
     badge = "badge-med"
     alert_class = "alert-med"
-
 else:
     level = "Critical Condition"
     badge = "badge-high"
@@ -178,86 +180,19 @@ left, right = st.columns([1.2, 2])
 
 with left:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Current Risk Status")
+    st.subheader("Current Status")
     st.metric("Risk Probability", f"{current_risk:.2f}")
     st.markdown(f"<div class='badge {badge}'>{level}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
     if level != "Stable":
         st.markdown(f"<div class='{alert_class}'>", unsafe_allow_html=True)
-
-        if level == "Early Deterioration":
-            st.markdown("""
-            **Clinical Early Warning**  
-            The patient is showing gradual physiological deviation from baseline.
-            Compensatory mechanisms are still active, but the trajectory indicates
-            increasing vulnerability if no action is taken.
-            """)
-
-        if level == "Critical Condition":
-            st.markdown("""
-            **Critical Clinical Alert**  
-            Sustained physiological instability detected.
-            The patient’s current trajectory closely matches patterns observed
-            in cases that progressed to critical events in ICU settings.
-            """)
-
+        st.markdown(f"**{level} Alert**  
+Patient trajectory indicates physiological instability.")
         st.markdown("</div>", unsafe_allow_html=True)
 
 with right:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Risk Trajectory Over Time")
+    st.subheader("Risk Timeline")
     st.line_chart(data.set_index("hour")["risk"])
-
-    with st.expander("What is happening to the patient?"):
-        if level == "Stable":
-            st.markdown("""
-            Vital signs remain within expected clinical ranges.
-            No progressive stress patterns are detected at this time.
-            """)
-
-        elif level == "Early Deterioration":
-            st.markdown("""
-            A steady increase in heart rate combined with a gradual decline
-            in blood pressure suggests early physiological stress.
-            This pattern often precedes more severe deterioration if untreated.
-            """)
-
-        else:
-            st.markdown("""
-            Rapid heart rate escalation, declining blood pressure,
-            reduced oxygen saturation, and rising temperature indicate
-            failure of physiological compensation mechanisms.
-            """)
-
     st.markdown("</div>", unsafe_allow_html=True)
-
-# ===============================
-# Explainable AI
-# ===============================
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.subheader("Explainable AI – Decision Drivers")
-
-importance = pd.Series(
-    abs(model.coef_[0]),
-    index=X_train.columns
-).sort_values(ascending=False)
-
-st.bar_chart(importance)
-
-with st.expander("Why did MedGuard AI raise this alert?"):
-    st.markdown("""
-    The model assigns the highest importance to heart rate acceleration
-    and declining systolic blood pressure. These variables consistently
-    appear in historical cases that progressed toward critical deterioration.
-    """)
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# ===============================
-# Footer
-# ===============================
-st.caption(
-    "MedGuard AI provides early warning insights to support clinical awareness. "
-    "Final diagnosis and treatment decisions remain the responsibility of the clinician."
-)
