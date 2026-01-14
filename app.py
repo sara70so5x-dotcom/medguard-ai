@@ -6,57 +6,60 @@ from sklearn.linear_model import LogisticRegression
 # =========================
 # Page Config
 # =========================
-st.set_page_config(page_title="MedGuard AI", layout="wide")
+st.set_page_config(
+    page_title="MedGuard AI",
+    layout="wide"
+)
 
 # =========================
-# Clinical Style
+# Dark Clinical Theme
 # =========================
 st.markdown("""
 <style>
 html, body {
-    background-color: #10161c;
-    color: #e2e8f0;
+    background-color: #0f172a;
+    color: #e5e7eb;
 }
 h1, h2, h3 {
-    color: #f8fafc;
+    color: #f9fafb;
 }
 .card {
-    background-color: #1b2430;
+    background-color: #111827;
     padding: 22px;
     border-radius: 14px;
     margin-bottom: 20px;
-    border: 1px solid #273142;
+    border: 1px solid #1f2937;
 }
-.badge-low {
-    background-color: #1f7a55;
-    padding: 10px;
-    border-radius: 8px;
-    text-align: center;
-    font-weight: 600;
-}
-.badge-med {
-    background-color: #8f6b1b;
-    padding: 10px;
-    border-radius: 8px;
-    text-align: center;
-    font-weight: 600;
-}
-.badge-high {
-    background-color: #374151;
-    padding: 10px;
-    border-radius: 8px;
-    text-align: center;
-    font-weight: 600;
-}
-.alert {
-    background-color: #111827;
-    border-left: 4px solid #fbbf24;
-    padding: 14px;
+.alert-low {
+    border-left: 5px solid #22c55e;
+    background-color: #052e1c;
+    padding: 16px;
     border-radius: 10px;
 }
+.alert-med {
+    border-left: 5px solid #facc15;
+    background-color: #2a2200;
+    padding: 16px;
+    border-radius: 10px;
+}
+.alert-high {
+    border-left: 5px solid #ef4444;
+    background-color: #2a0606;
+    padding: 16px;
+    border-radius: 10px;
+}
+.badge {
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+.badge-low { background-color: #14532d; }
+.badge-med { background-color: #713f12; }
+.badge-high { background-color: #7f1d1d; }
 .note {
     font-size: 0.85rem;
-    color: #94a3b8;
+    color: #9ca3af;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -65,24 +68,27 @@ h1, h2, h3 {
 # Header
 # =========================
 st.title("MedGuard AI")
-st.caption("Continuous patient monitoring • AI-assisted early clinical alerts")
+st.caption(
+    "AI-assisted early warning system for continuous patient monitoring "
+    "(Clinical decision-support only)"
+)
 
 # =========================
-# Patient Scenario Selector
+# Patient Scenario
 # =========================
 scenario = st.selectbox(
-    "Select patient condition",
+    "Select patient scenario",
     [
-        "Patient 1 – Stable",
-        "Patient 2 – Early deterioration",
-        "Patient 3 – Severe deterioration"
+        "Patient A – Stable",
+        "Patient B – Early deterioration",
+        "Patient C – Severe deterioration"
     ]
 )
 
 # =========================
-# Simulated Patient Data
+# Patient Data Simulation
 # =========================
-def generate_patient_data(hours=48, level="stable"):
+def generate_patient_data(hours=48, mode="stable"):
     np.random.seed(42)
     df = pd.DataFrame({
         "hour": range(hours),
@@ -92,32 +98,32 @@ def generate_patient_data(hours=48, level="stable"):
         "temperature": np.random.normal(36.8, 0.2, hours)
     })
 
-    if level == "early":
+    if mode == "early":
         df.loc[28:, "heart_rate"] += np.linspace(0, 18, hours - 28)
-        df.loc[28:, "systolic_bp"] -= np.linspace(0, 18, hours - 28)
+        df.loc[28:, "systolic_bp"] -= np.linspace(0, 15, hours - 28)
         df.loc[28:, "spo2"] -= np.linspace(0, 3, hours - 28)
 
-    if level == "severe":
-        df.loc[20:, "heart_rate"] += np.linspace(5, 35, hours - 20)
-        df.loc[20:, "systolic_bp"] -= np.linspace(5, 45, hours - 20)
-        df.loc[20:, "spo2"] -= np.linspace(2, 8, hours - 20)
-        df.loc[20:, "temperature"] += np.linspace(0.2, 1.2, hours - 20)
+    if mode == "severe":
+        df.loc[20:, "heart_rate"] += np.linspace(8, 35, hours - 20)
+        df.loc[20:, "systolic_bp"] -= np.linspace(10, 45, hours - 20)
+        df.loc[20:, "spo2"] -= np.linspace(3, 9, hours - 20)
+        df.loc[20:, "temperature"] += np.linspace(0.3, 1.2, hours - 20)
 
     return df
 
 if "Stable" in scenario:
-    data = generate_patient_data(level="stable")
+    data = generate_patient_data(mode="stable")
 elif "Early" in scenario:
-    data = generate_patient_data(level="early")
+    data = generate_patient_data(mode="early")
 else:
-    data = generate_patient_data(level="severe")
+    data = generate_patient_data(mode="severe")
 
 # =========================
-# Global Training Dataset
+# Training Data (Synthetic)
 # =========================
 def generate_training_data(samples=400):
-    np.random.seed(1)
     rows = []
+    np.random.seed(1)
     for _ in range(samples):
         hr = np.random.normal(85, 15)
         bp = np.random.normal(120, 20)
@@ -132,76 +138,93 @@ def generate_training_data(samples=400):
         columns=["heart_rate", "systolic_bp", "spo2", "temperature", "label"]
     )
 
-train_df = generate_training_data()
-X_train = train_df[["heart_rate", "systolic_bp", "spo2", "temperature"]]
-y_train = train_df["label"]
+train = generate_training_data()
+X_train = train.drop(columns=["label"])
+y_train = train["label"]
 
 model = LogisticRegression()
 model.fit(X_train, y_train)
 
 # =========================
-# Prediction on Patient
+# Risk Prediction
 # =========================
 X_patient = data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
 data["risk"] = model.predict_proba(X_patient)[:, 1]
 current_risk = data.iloc[-1]["risk"]
 
 # =========================
-# Risk Level
+# Risk Levels
 # =========================
 if current_risk < 0.35:
     level = "Low Risk"
     badge = "badge-low"
+    alert_class = "alert-low"
 elif current_risk < 0.65:
     level = "Moderate Risk"
     badge = "badge-med"
+    alert_class = "alert-med"
 else:
     level = "High Risk"
     badge = "badge-high"
+    alert_class = "alert-high"
 
 # =========================
 # Layout
 # =========================
-col1, col2 = st.columns([1.2, 2])
+left, right = st.columns([1.2, 2])
 
-with col1:
+with left:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Risk Snapshot")
-    st.metric("Current Risk Probability", f"{current_risk:.2f}")
-    st.markdown(f"<div class='{badge}'>{level}</div>", unsafe_allow_html=True)
+    st.subheader("Current Risk Assessment")
+    st.metric("Risk Probability", f"{current_risk:.2f}")
+    st.markdown(f"<div class='badge {badge}'>{level}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
     if level != "Low Risk":
-        st.markdown("<div class='alert'>", unsafe_allow_html=True)
-        st.markdown("""
-        **Clinical Alert**  
-        Patient trajectory indicates ongoing physiological deterioration.
-        """)
+        st.markdown(f"<div class='{alert_class}'>", unsafe_allow_html=True)
+
+        if level == "Moderate Risk":
+            st.markdown("""
+            **Clinical Alert – Early Warning**  
+            The patient is showing early physiological deviation from baseline.
+            Patterns suggest increasing vulnerability but deterioration may still
+            be preventable with timely clinical review.
+            """)
+
+        if level == "High Risk":
+            st.markdown("""
+            **Clinical Alert – High Risk**  
+            The patient demonstrates sustained physiological instability.
+            Current trends indicate a high likelihood of further deterioration
+            if the trajectory continues.
+            """)
+
         st.markdown("</div>", unsafe_allow_html=True)
 
-with col2:
+with right:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Risk Trend")
+    st.subheader("Risk Trajectory Over Time")
     st.line_chart(data.set_index("hour")["risk"])
 
     with st.expander("What is happening to the patient?"):
         if level == "Low Risk":
             st.markdown("""
-            The patient’s vital signs remain stable and within expected ranges.
-            There is no evidence of physiological stress or instability at this time.
+            Vital signs remain within expected physiological ranges.
+            No progressive stress patterns are detected.
             """)
+
         elif level == "Moderate Risk":
             st.markdown("""
-            The patient is showing **early signs of physiological stress**.
-            Gradual increases in heart rate and mild blood pressure reduction
-            suggest the beginning of clinical deterioration.
+            Gradual heart rate elevation combined with subtle blood pressure
+            reduction indicates early compensatory stress.
+            These changes often precede overt clinical deterioration.
             """)
+
         else:
             st.markdown("""
-            The patient is experiencing **significant physiological instability**.
             Rapid heart rate escalation, declining blood pressure, and reduced
-            oxygen saturation indicate a high likelihood of imminent deterioration
-            if the current trajectory continues.
+            oxygen saturation indicate failure of physiological compensation.
+            This pattern has historically been associated with critical events.
             """)
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -210,16 +233,20 @@ with col2:
 # Explainable AI
 # =========================
 st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.subheader("Explainable AI")
+st.subheader("Explainable AI – Key Contributors")
 
-coeff = pd.Series(model.coef_[0], index=X_train.columns)
-coeff = coeff.abs().sort_values(ascending=False)
-st.bar_chart(coeff)
+importance = pd.Series(
+    abs(model.coef_[0]),
+    index=X_train.columns
+).sort_values(ascending=False)
 
-with st.expander("Why did the model raise this risk?"):
+st.bar_chart(importance)
+
+with st.expander("Why did the system raise this alert?"):
     st.markdown("""
-    The model identified heart rate acceleration and declining systolic
-    blood pressure as the strongest contributors to the current risk signal.
+    The model places the highest weight on heart rate acceleration and
+    declining systolic blood pressure. These variables consistently appear
+    in cases that progressed to clinical deterioration in historical data.
     """)
 
 st.markdown("</div>", unsafe_allow_html=True)
@@ -228,5 +255,6 @@ st.markdown("</div>", unsafe_allow_html=True)
 # Footer
 # =========================
 st.caption(
-    "MedGuard AI is a clinical decision-support assistant and does not replace medical judgment."
+    "MedGuard AI is an early warning and decision-support system. "
+    "Final clinical decisions remain the responsibility of the healthcare professional."
 )
