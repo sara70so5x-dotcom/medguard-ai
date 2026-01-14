@@ -24,7 +24,9 @@ header {visibility: hidden;}
 html, body {
     background-color: #0b1220;
     color: #e5e7eb;
+    font-family: Arial, sans-serif;
 }
+
 h1, h2, h3 { color: #f9fafb; }
 
 .card {
@@ -35,7 +37,10 @@ h1, h2, h3 { color: #f9fafb; }
     margin-bottom: 18px;
 }
 
-.metric { font-size: 1.4rem; font-weight: 600; }
+.metric {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
 
 .badge {
     text-align: center;
@@ -44,6 +49,7 @@ h1, h2, h3 { color: #f9fafb; }
     font-weight: 600;
     margin-top: 8px;
 }
+
 .badge-low { background-color: #14532d; }
 .badge-med { background-color: #b45309; }
 .badge-high { background-color: #7f1d1d; }
@@ -54,12 +60,14 @@ h1, h2, h3 { color: #f9fafb; }
     padding: 16px;
     border-radius: 10px;
 }
+
 .alert-med {
     border-left: 6px solid #fbbf24;
     background-color: #3a2a00;
     padding: 16px;
     border-radius: 10px;
 }
+
 .alert-high {
     border-left: 6px solid #ef4444;
     background-color: #2a0606;
@@ -67,7 +75,10 @@ h1, h2, h3 { color: #f9fafb; }
     border-radius: 10px;
 }
 
-.note { font-size: 0.85rem; color: #9ca3af; }
+.note {
+    font-size: 0.9rem;
+    color: #9ca3af;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -75,9 +86,11 @@ h1, h2, h3 { color: #f9fafb; }
 # Header
 # ===============================
 st.markdown("""
-<h1 style="margin-bottom:0;">MedGuard AI</h1>
+<h1>🛡️ MedGuard AI</h1>
 <p class="note">
-AI-assisted early warning system • Clinical decision support
+Clinical Early Warning System (Decision Support Only)<br>
+This system assists clinicians in identifying early physiological deterioration.
+It does <b>not</b> replace clinical judgment.
 </p>
 """, unsafe_allow_html=True)
 
@@ -85,7 +98,7 @@ AI-assisted early warning system • Clinical decision support
 # Scenario Selector
 # ===============================
 scenario = st.selectbox(
-    "Patient Scenario",
+    "Select Patient Scenario",
     ["Stable Patient", "Early Deterioration", "Critical Condition"]
 )
 
@@ -115,15 +128,11 @@ def generate_patient_data(hours=48, mode="stable"):
 
     return df
 
-mode = (
-    "stable" if scenario == "Stable Patient"
-    else "early" if scenario == "Early Deterioration"
-    else "severe"
-)
+mode = "stable" if scenario == "Stable Patient" else "early" if scenario == "Early Deterioration" else "severe"
 data = generate_patient_data(mode=mode)
 
 # ===============================
-# Prototype Model
+# Train Prototype Model
 # ===============================
 def generate_training_data(samples=400):
     rows = []
@@ -138,11 +147,11 @@ def generate_training_data(samples=400):
 
     return pd.DataFrame(
         rows,
-        columns=["heart_rate","systolic_bp","spo2","temperature","label"]
+        columns=["heart_rate", "systolic_bp", "spo2", "temperature", "label"]
     )
 
 train = generate_training_data()
-X_train = train[["heart_rate","systolic_bp","spo2","temperature"]]
+X_train = train[["heart_rate", "systolic_bp", "spo2", "temperature"]]
 y_train = train["label"]
 
 model = LogisticRegression()
@@ -151,11 +160,11 @@ model.fit(X_train, y_train)
 # ===============================
 # Prediction
 # ===============================
-X_patient = data[["heart_rate","systolic_bp","spo2","temperature"]]
-data["raw_risk"] = model.predict_proba(X_patient)[:,1]
+X_patient = data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
+data["raw_risk"] = model.predict_proba(X_patient)[:, 1]
 raw_risk = data.iloc[-1]["raw_risk"]
 
-# Controlled risk for prototype clarity
+# Controlled risk (prototype clarity)
 if scenario == "Stable Patient":
     risk = float(np.clip(raw_risk, 0.10, 0.30))
 elif scenario == "Early Deterioration":
@@ -168,21 +177,26 @@ else:
 # ===============================
 if risk < 0.35:
     level, badge, alert = "Stable", "badge-low", "alert-low"
+    alert_text = "Patient trajectory remains within expected physiological ranges."
 elif risk < 0.7:
     level, badge, alert = "Early Deterioration", "badge-med", "alert-med"
+    alert_text = (
+        "Subtle but consistent physiological changes detected. "
+        "Closer monitoring is advised."
+    )
 else:
     level, badge, alert = "Critical Condition", "badge-high", "alert-high"
+    alert_text = (
+        "Pattern strongly resembles prior clinical deterioration cases. "
+        "Immediate clinical review is recommended."
+    )
 
 # ===============================
-# Baseline Comparison
+# Baseline & Confidence
 # ===============================
 baseline = data.iloc[:12].mean()
 current = data.iloc[-1]
-
-# ===============================
-# Model Confidence
-# ===============================
-variability = data[["heart_rate","systolic_bp","spo2","temperature"]].std().mean()
+variability = data[["heart_rate", "systolic_bp", "spo2", "temperature"]].std().mean()
 confidence = "High" if variability < 5 else "Moderate" if variability < 10 else "Low"
 
 # ===============================
@@ -192,22 +206,18 @@ left, right = st.columns([1.3, 2])
 
 with left:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Patient Overview")
+    st.subheader("Current Patient Status")
     st.markdown(f"<div class='metric'>Risk Score: {risk:.2f}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='badge {badge}'>{level}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    if level != "Stable":
-        st.markdown(f"<div class='{alert}'>", unsafe_allow_html=True)
-        st.markdown(f"""
-**{level} Alert**  
-Physiological trends indicate abnormal deviation from baseline.
-""")
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='{alert}'>", unsafe_allow_html=True)
+    st.markdown(f"**Clinical Alert**  \n{alert_text}")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 with right:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Risk Trajectory")
+    st.subheader("Risk Trajectory (Last 48h)")
     st.line_chart(data.set_index("hour")["raw_risk"])
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -218,32 +228,32 @@ st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.subheader("Clinical Insight Summary")
 
 st.markdown("**Key physiological changes**")
-st.write(f"- Heart rate ↑ **{((current.heart_rate/baseline.heart_rate)-1)*100:.1f}%**")
-st.write(f"- Systolic BP ↓ **{baseline.systolic_bp - current.systolic_bp:.1f} mmHg**")
-st.write("- Oxygen saturation shows a gradual downward trend")
+st.write(f"- Heart rate ↑ {((current.heart_rate/baseline.heart_rate)-1)*100:.1f}%")
+st.write(f"- Systolic BP ↓ {baseline.systolic_bp - current.systolic_bp:.1f} mmHg")
+st.write("- Oxygen saturation shows a downward trend")
 
-st.markdown("**Clinical interpretation**")
+st.markdown("**Why this matters**")
 if level == "Early Deterioration":
     st.write(
-        "This pattern suggests early physiological stress. "
-        "Similar trends have previously preceded clinical deterioration."
+        "This pattern suggests early physiological stress that may precede "
+        "clinical deterioration if trends continue."
     )
 elif level == "Critical Condition":
     st.write(
-        "Findings indicate failure of physiological compensation and "
-        "are commonly observed prior to critical events."
+        "Findings indicate loss of physiological compensation and are commonly "
+        "observed prior to critical events."
     )
 else:
     st.write("No clinically concerning deviations are currently observed.")
 
-st.markdown("**Focus areas for monitoring**")
+st.markdown("**Key parameters to monitor**")
 st.write("- Blood pressure trend")
 st.write("- Oxygen saturation")
 st.write("- Temperature progression")
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ===============================
-# 🔥 Clinical Foresight (ADDITION)
+# Optional Clinical Foresight
 # ===============================
 with st.expander("Clinical Foresight (Optional)"):
     st.markdown("**What may happen next (6–12 hours)?**")
@@ -252,10 +262,10 @@ with st.expander("Clinical Foresight (Optional)"):
         "the patient may clinically worsen within the next 6–12 hours."
     )
 
-    st.markdown("**How confident is this signal?**")
+    st.markdown("**Confidence in this signal**")
     st.write(f"{confidence} confidence based on consistency of vital sign trends.")
 
-    st.markdown("**Have we seen this pattern before?**")
+    st.markdown("**Have we seen this before?**")
     st.write(
         "Similar physiological patterns were observed in previous patients "
         "who later experienced deterioration."
@@ -265,6 +275,6 @@ with st.expander("Clinical Foresight (Optional)"):
 # Footer
 # ===============================
 st.caption(
-    "MedGuard AI supports clinical awareness and decision-making. "
-    "Final medical decisions remain the responsibility of the clinician."
+    "MedGuard AI is a clinical decision-support system. "
+    "Final diagnosis and treatment decisions remain the responsibility of the clinician."
 )
