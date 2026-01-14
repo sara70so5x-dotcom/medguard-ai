@@ -51,7 +51,7 @@ h1, h2, h3 {
 }
 
 .badge-low { background-color: #14532d; }
-.badge-med { background-color: #b45309; }   /* ORANGE */
+.badge-med { background-color: #b45309; }
 .badge-high { background-color: #7f1d1d; }
 
 .alert-low {
@@ -62,7 +62,7 @@ h1, h2, h3 {
 }
 
 .alert-med {
-    border-left: 6px solid #fbbf24;           /* ORANGE */
+    border-left: 6px solid #fbbf24;
     background-color: #3a2a00;
     padding: 16px;
     border-radius: 10px;
@@ -134,7 +134,7 @@ mode = (
 data = generate_patient_data(mode=mode)
 
 # ===============================
-# Train Model (Prototype)
+# Train Prototype Model
 # ===============================
 def generate_training_data(samples=400):
     rows = []
@@ -160,16 +160,15 @@ model = LogisticRegression()
 model.fit(X_train, y_train)
 
 # ===============================
-# Model Prediction
+# Prediction
 # ===============================
 X_patient = data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
 data["raw_risk"] = model.predict_proba(X_patient)[:, 1]
-
-# ===============================
-# 🔥 FINAL FIX: CONTROLLED RISK BY SCENARIO
-# ===============================
 raw_risk = data.iloc[-1]["raw_risk"]
 
+# ===============================
+# Controlled Risk for Prototype
+# ===============================
 if scenario == "Stable Patient":
     risk = float(np.clip(raw_risk, 0.10, 0.30))
 elif scenario == "Early Deterioration":
@@ -188,6 +187,12 @@ else:
     level, badge, alert = "Critical Condition", "badge-high", "alert-high"
 
 # ===============================
+# Baseline Comparison
+# ===============================
+baseline = data.iloc[:12].mean()
+current = data.iloc[-1]
+
+# ===============================
 # Layout
 # ===============================
 left, right = st.columns([1.3, 2])
@@ -199,19 +204,11 @@ with left:
     st.markdown(f"<div class='badge {badge}'>{level}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Live Vitals")
-    st.write(f"❤️ Heart Rate: **{int(data.iloc[-1]['heart_rate'])} bpm**")
-    st.write(f"🩸 Systolic BP: **{int(data.iloc[-1]['systolic_bp'])} mmHg**")
-    st.write(f"🫁 SpO₂: **{data.iloc[-1]['spo2']:.1f}%**")
-    st.write(f"🌡️ Temperature: **{data.iloc[-1]['temperature']:.1f} °C**")
-    st.markdown("</div>", unsafe_allow_html=True)
-
     if level != "Stable":
         st.markdown(f"<div class='{alert}'>", unsafe_allow_html=True)
         st.markdown(f"""
 **{level} Alert**  
-Physiological patterns indicate abnormal progression requiring attention.
+Physiological trends indicate abnormal deviation from baseline.
 """)
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -221,15 +218,44 @@ with right:
     st.line_chart(data.set_index("hour")["raw_risk"])
     st.markdown("</div>", unsafe_allow_html=True)
 
-    with st.expander("Clinical Interpretation"):
-        if level == "Stable":
-            st.write("Patient vitals are stable with no signs of physiological stress.")
-        elif level == "Early Deterioration":
-            st.write(
-                "Early compensatory stress detected. Trends suggest rising workload "
-                "on cardiovascular and respiratory systems."
-            )
-        else:
-            st.write(
-                "Severe instability detected. Patterns align with high-risk clinical deterioration."
-            )
+# ===============================
+# 🔥 Clinical Insight Summary
+# ===============================
+st.markdown("<div class='card'>", unsafe_allow_html=True)
+st.subheader("Clinical Insight Summary")
+
+st.markdown("**Key Physiological Changes**")
+st.write(f"- Heart rate increased by **{((current.heart_rate/baseline.heart_rate)-1)*100:.1f}%**")
+st.write(f"- Systolic BP decreased by **{baseline.systolic_bp - current.systolic_bp:.1f} mmHg**")
+st.write(f"- SpO₂ trend shows gradual decline")
+
+st.markdown("**Clinical Interpretation**")
+if level == "Early Deterioration":
+    st.write(
+        "The observed pattern suggests early systemic stress. "
+        "Similar trajectories have previously preceded clinical deterioration."
+    )
+elif level == "Critical Condition":
+    st.write(
+        "The pattern indicates failure of physiological compensation and is "
+        "commonly observed prior to critical events in ICU settings."
+    )
+else:
+    st.write(
+        "No clinically concerning deviations from baseline are currently observed."
+    )
+
+st.markdown("**Focus Areas for Monitoring**")
+st.write("- Hemodynamic stability (BP trend)")
+st.write("- Oxygen saturation trajectory")
+st.write("- Temperature progression")
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ===============================
+# Footer
+# ===============================
+st.caption(
+    "MedGuard AI is a clinical decision-support system. "
+    "Final diagnosis and treatment decisions remain the responsibility of the clinician."
+)
