@@ -47,10 +47,9 @@ body {
 .accent {
     color: #60a5fa;
 }
-.divider {
-    height: 1px;
-    background-color: #1e293b;
-    margin: 16px 0;
+.meta {
+    font-size: 13px;
+    color: #94a3b8;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -94,22 +93,32 @@ def calculate_risk(row):
     if row["temperature"] > 38: risk += 0.15
     return min(risk, 1.0)
 
+def risk_label(score):
+    if score < 0.4:
+        return "Low"
+    elif score < 0.7:
+        return "Moderate"
+    else:
+        return "High"
+
 # ================== ACTION ==================
-if st.button("Analyze Patient Trends"):
+if st.button("Review Patient Risk"):
     data = generate_patient_data()
     data["risk_score"] = data.apply(calculate_risk, axis=1)
     last = data.iloc[-1]
 
+    score = round(last["risk_score"], 2)
+    label = risk_label(score)
     confidence = round(np.random.uniform(0.78, 0.9), 2)
 
     # ================== CORE INSIGHT ==================
-    st.markdown("""
+    st.markdown(f"""
     <div class="panel">
         <div class="label">AI Risk Awareness</div>
-        <div class="big accent">Risk Level: {}</div>
-        <div class="value">Model confidence: {}</div>
+        <div class="big accent">Risk Level: {score} ({label})</div>
+        <div class="meta">Model confidence: {confidence}</div>
     </div>
-    """.format(round(last["risk_score"], 2), confidence), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     # ================== WHY ==================
     st.markdown("""
