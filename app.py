@@ -44,7 +44,6 @@ h1, h2, h3 { color: #f9fafb; }
     font-weight: 600;
     margin-top: 8px;
 }
-
 .badge-low { background-color: #14532d; }
 .badge-med { background-color: #b45309; }
 .badge-high { background-color: #7f1d1d; }
@@ -91,7 +90,7 @@ scenario = st.selectbox(
 )
 
 # ===============================
-# Patient Data
+# Patient Data Generator
 # ===============================
 def generate_patient_data(hours=48, mode="stable"):
     np.random.seed(42)
@@ -116,11 +115,15 @@ def generate_patient_data(hours=48, mode="stable"):
 
     return df
 
-mode = "stable" if scenario == "Stable Patient" else "early" if scenario == "Early Deterioration" else "severe"
+mode = (
+    "stable" if scenario == "Stable Patient"
+    else "early" if scenario == "Early Deterioration"
+    else "severe"
+)
 data = generate_patient_data(mode=mode)
 
 # ===============================
-# Train Prototype Model
+# Prototype Model
 # ===============================
 def generate_training_data(samples=400):
     rows = []
@@ -132,6 +135,7 @@ def generate_training_data(samples=400):
         temp = np.random.normal(37, 0.6)
         label = int((hr > 100) or (bp < 95) or (spo2 < 92))
         rows.append([hr, bp, spo2, temp, label])
+
     return pd.DataFrame(
         rows,
         columns=["heart_rate","systolic_bp","spo2","temperature","label"]
@@ -170,28 +174,16 @@ else:
     level, badge, alert = "Critical Condition", "badge-high", "alert-high"
 
 # ===============================
-# 🔮 Trajectory Forecast (NEW)
+# Baseline Comparison
 # ===============================
-trend_slope = np.polyfit(data["hour"], data["raw_risk"], 1)[0]
-
-if trend_slope > 0.002 and level != "Critical Condition":
-    forecast = "Risk trajectory suggests potential progression to a higher severity state within the next 6–12 hours."
-elif trend_slope > 0.0:
-    forecast = "Risk trajectory appears slowly increasing. Continued monitoring is advised."
-else:
-    forecast = "Risk trajectory is stable with no short-term escalation expected."
+baseline = data.iloc[:12].mean()
+current = data.iloc[-1]
 
 # ===============================
-# 📊 Model Confidence (NEW)
+# Model Confidence
 # ===============================
 variability = data[["heart_rate","systolic_bp","spo2","temperature"]].std().mean()
-
-if variability < 5:
-    confidence = "High"
-elif variability < 10:
-    confidence = "Moderate"
-else:
-    confidence = "Low"
+confidence = "High" if variability < 5 else "Moderate" if variability < 10 else "Low"
 
 # ===============================
 # Layout
@@ -209,7 +201,7 @@ with left:
         st.markdown(f"<div class='{alert}'>", unsafe_allow_html=True)
         st.markdown(f"""
 **{level} Alert**  
-Physiological trends indicate deviation from baseline.
+Physiological trends indicate abnormal deviation from baseline.
 """)
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -220,23 +212,54 @@ with right:
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ===============================
-# 🧠 Clinical Co-Pilot Panel (THE WOW)
+# Clinical Insight Summary
 # ===============================
 st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.subheader("Clinical Co-Pilot Insights")
+st.subheader("Clinical Insight Summary")
 
-st.markdown("**Projected Trajectory (Next 6–12h)**")
-st.write(forecast)
+st.markdown("**Key physiological changes**")
+st.write(f"- Heart rate ↑ **{((current.heart_rate/baseline.heart_rate)-1)*100:.1f}%**")
+st.write(f"- Systolic BP ↓ **{baseline.systolic_bp - current.systolic_bp:.1f} mmHg**")
+st.write("- Oxygen saturation shows a gradual downward trend")
 
-st.markdown("**Model Confidence**")
-st.write(f"{confidence} confidence based on data consistency and trend stability.")
+st.markdown("**Clinical interpretation**")
+if level == "Early Deterioration":
+    st.write(
+        "This pattern suggests early physiological stress. "
+        "Similar trends have previously preceded clinical deterioration."
+    )
+elif level == "Critical Condition":
+    st.write(
+        "Findings indicate failure of physiological compensation and "
+        "are commonly observed prior to critical events."
+    )
+else:
+    st.write("No clinically concerning deviations are currently observed.")
 
-st.markdown("**Similar Patient Patterns**")
-st.write(
-    "Current trajectory aligns with patterns observed in prior cases with comparable vital sign dynamics."
-)
-
+st.markdown("**Focus areas for monitoring**")
+st.write("- Blood pressure trend")
+st.write("- Oxygen saturation")
+st.write("- Temperature progression")
 st.markdown("</div>", unsafe_allow_html=True)
+
+# ===============================
+# 🔥 Clinical Foresight (ADDITION)
+# ===============================
+with st.expander("Clinical Foresight (Optional)"):
+    st.markdown("**What may happen next (6–12 hours)?**")
+    st.write(
+        "If the current physiological trend continues, "
+        "the patient may clinically worsen within the next 6–12 hours."
+    )
+
+    st.markdown("**How confident is this signal?**")
+    st.write(f"{confidence} confidence based on consistency of vital sign trends.")
+
+    st.markdown("**Have we seen this pattern before?**")
+    st.write(
+        "Similar physiological patterns were observed in previous patients "
+        "who later experienced deterioration."
+    )
 
 # ===============================
 # Footer
