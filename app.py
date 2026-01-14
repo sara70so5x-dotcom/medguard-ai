@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 
-# ================== PAGE ==================
+# ================== PAGE CONFIG ==================
 st.set_page_config(
     page_title="MedGuard AI",
     page_icon="🛡️",
@@ -13,41 +13,44 @@ st.set_page_config(
 st.markdown("""
 <style>
 body {
-    background-color: #020617;
+    background-color: #0b1220;
     color: #e5e7eb;
-}
-.block {
-    padding: 18px;
-    border-radius: 14px;
-    background-color: #020617;
-    border: 1px solid #1e293b;
-    margin-bottom: 16px;
 }
 .header {
     font-size: 26px;
     font-weight: 600;
     color: #e5e7eb;
 }
-.sub {
+.subheader {
     font-size: 14px;
     color: #9ca3af;
+    margin-bottom: 20px;
+}
+.panel {
+    padding: 18px;
+    border-radius: 14px;
+    background-color: #0f172a;
+    border: 1px solid #1e293b;
+    margin-bottom: 18px;
+}
+.big {
+    font-size: 32px;
+    font-weight: 600;
 }
 .label {
     font-size: 13px;
     color: #9ca3af;
 }
 .value {
-    font-size: 18px;
-    font-weight: 500;
+    font-size: 16px;
 }
-.muted {
-    color: #9ca3af;
-    font-size: 13px;
+.accent {
+    color: #60a5fa;
 }
 .divider {
     height: 1px;
     background-color: #1e293b;
-    margin: 12px 0;
+    margin: 16px 0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -55,23 +58,18 @@ body {
 # ================== HEADER ==================
 st.markdown("<div class='header'>🛡️ MedGuard AI</div>", unsafe_allow_html=True)
 st.markdown(
-    "<div class='sub'>"
-    "Clinical decision support assistant for early risk awareness<br>"
-    "Supports physician judgment — does not provide diagnoses or treatment decisions."
+    "<div class='subheader'>"
+    "Clinical decision support assistant — enhances awareness, does not direct care."
     "</div>",
     unsafe_allow_html=True
 )
 
-st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
-
-# ================== CONTEXT ==================
+# ================== CONTROLS ==================
 col1, col2 = st.columns(2)
 with col1:
-    department = st.selectbox("Clinical Setting", ["Ward", "Emergency", "ICU"])
+    st.selectbox("Clinical Setting", ["Ward", "Emergency", "ICU"])
 with col2:
-    window = st.selectbox("Analysis Window", ["Last 6 hours", "Last 12 hours", "Last 24 hours"])
-
-st.markdown("<div class='muted'>Low alert frequency mode enabled</div>", unsafe_allow_html=True)
+    st.selectbox("Analysis Window", ["Last 6 hours", "Last 12 hours", "Last 24 hours"])
 
 # ================== DATA ==================
 def generate_patient_data(hours=48):
@@ -102,49 +100,36 @@ if st.button("Analyze Patient Trends"):
     data["risk_score"] = data.apply(calculate_risk, axis=1)
     last = data.iloc[-1]
 
-    confidence = round(np.random.uniform(0.75, 0.9), 2)
+    confidence = round(np.random.uniform(0.78, 0.9), 2)
 
-    # ================== SUMMARY ==================
+    # ================== CORE INSIGHT ==================
     st.markdown("""
-    <div class="block">
-        <div class="label">Patient Trend Summary</div>
-        <div class="value">
-        Heart rate rising · Blood pressure declining · SpO₂ mildly reduced · Temperature stable
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ================== RISK ==================
-    st.markdown(f"""
-    <div class="block">
+    <div class="panel">
         <div class="label">AI Risk Awareness</div>
-        <div class="value">Estimated risk level: {round(last["risk_score"], 2)}</div>
-        <div class="muted">Model confidence: {confidence}</div>
+        <div class="big accent">Risk Level: {}</div>
+        <div class="value">Model confidence: {}</div>
     </div>
-    """, unsafe_allow_html=True)
+    """.format(round(last["risk_score"], 2), confidence), unsafe_allow_html=True)
 
-    # ================== EXPLANATION ==================
+    # ================== WHY ==================
     st.markdown("""
-    <div class="block">
+    <div class="panel">
         <div class="label">Why risk may be increasing</div>
         <div class="value">
         • Sustained rise in heart rate<br>
-        • Gradual drop in systolic blood pressure<br>
-        • Pattern similarity to prior deterioration cases
+        • Gradual decline in systolic blood pressure<br>
+        • Similar trajectory observed in prior deterioration cases
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # ================== SUPPORT ==================
+    # ================== CONTEXT ==================
     st.markdown("""
-    <div class="block">
-        <div class="label">Supportive clinical insight</div>
+    <div class="panel">
+        <div class="label">Clinical context</div>
         <div class="value">
-        In comparable cases, earlier review and closer monitoring were often associated
-        with improved outcomes.
-        </div>
-        <div class="muted">
-        This is contextual information — not a clinical directive.
+        In comparable cases, earlier clinical review and closer monitoring
+        were commonly associated with improved outcomes.
         </div>
     </div>
     """, unsafe_allow_html=True)
