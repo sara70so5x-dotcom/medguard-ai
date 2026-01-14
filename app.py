@@ -80,11 +80,10 @@ scenario = st.selectbox(
 )
 
 # =========================
-# Data Simulation
+# Simulated Patient Data
 # =========================
 def generate_patient_data(hours=48, level="stable"):
     np.random.seed(42)
-
     df = pd.DataFrame({
         "hour": range(hours),
         "heart_rate": np.random.normal(78, 5, hours),
@@ -114,15 +113,38 @@ else:
     data = generate_patient_data(level="severe")
 
 # =========================
-# ML Model
+# GLOBAL TRAINING DATASET
+# (Fixes the ValueError)
 # =========================
-X = data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
-y = ((X["heart_rate"] > 100) | (X["spo2"] < 94)).astype(int)
+def generate_training_data(samples=400):
+    np.random.seed(1)
+    rows = []
+    for _ in range(samples):
+        hr = np.random.normal(85, 15)
+        bp = np.random.normal(120, 20)
+        spo2 = np.random.normal(96, 3)
+        temp = np.random.normal(37, 0.6)
+
+        label = int((hr > 100) or (bp < 95) or (spo2 < 92))
+        rows.append([hr, bp, spo2, temp, label])
+
+    return pd.DataFrame(
+        rows,
+        columns=["heart_rate", "systolic_bp", "spo2", "temperature", "label"]
+    )
+
+train_df = generate_training_data()
+X_train = train_df[["heart_rate", "systolic_bp", "spo2", "temperature"]]
+y_train = train_df["label"]
 
 model = LogisticRegression()
-model.fit(X, y)
+model.fit(X_train, y_train)
 
-data["risk"] = model.predict_proba(X)[:, 1]
+# =========================
+# Prediction on Patient
+# =========================
+X_patient = data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
+data["risk"] = model.predict_proba(X_patient)[:, 1]
 current_risk = data.iloc[-1]["risk"]
 
 # =========================
@@ -151,8 +173,8 @@ with col1:
 
     with st.expander("What does this mean?"):
         st.markdown("""
-        This score reflects the probability of patient deterioration
-        based on evolving vital sign patterns over time.
+        This probability reflects the likelihood of early clinical deterioration
+        based on evolving vital sign patterns.
         """)
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -180,7 +202,7 @@ with col2:
     with st.expander("How to interpret this trend?"):
         st.markdown("""
         Stable patients maintain flat risk trajectories,
-        while early and severe cases show progressive risk escalation.
+        while early and severe cases show progressive escalation.
         """)
 
     st.markdown("</div>", unsafe_allow_html=True)
@@ -191,7 +213,7 @@ with col2:
 st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.subheader("Explainable AI")
 
-coeff = pd.Series(model.coef_[0], index=X.columns)
+coeff = pd.Series(model.coef_[0], index=X_train.columns)
 coeff = coeff.abs().sort_values(ascending=False)
 st.bar_chart(coeff)
 
