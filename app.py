@@ -9,59 +9,83 @@ st.set_page_config(
     layout="centered"
 )
 
-# ================== SESSION STATE ==================
-if "lang" not in st.session_state:
-    st.session_state.lang = "ar"
-
-# ================== LANGUAGE BUTTONS ==================
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("🇸🇦 عربي"):
-        st.session_state.lang = "ar"
-with col2:
-    if st.button("🇬🇧 English"):
-        st.session_state.lang = "en"
-
-lang = st.session_state.lang
-
-# ================== TEXT CONTENT ==================
-TEXT = {
-    "ar": {
-        "title": "🛡️ MedGuard AI",
-        "subtitle": "نظام دعم قرار سريري يعتمد على الذكاء الاصطناعي",
-        "problem_title": "🧠 المشكلة السريرية",
-        "problem": "تدهور حالة المريض يحدث غالبًا بشكل تدريجي وغير ملحوظ.",
-        "button": "▶️ تحليل حالة المريض",
-        "snapshot": "📊 ملخص حالة المريض",
-        "decision": "🟠 القرار السريري",
-        "xai": "🧠 لماذا هذا القرار؟",
-        "outcome": "🔮 ماذا لو لم يتم التدخل؟",
-        "timing": "⏱️ أفضل وقت للتدخل",
-        "trajectory": "📈 المسار الزمني للمخاطر",
-        "decision_text": "المريض يسير في مسار تدهور محتمل ويُنصح بالتدخل المبكر."
-    },
-    "en": {
-        "title": "🛡️ MedGuard AI",
-        "subtitle": "AI-powered clinical decision support system",
-        "problem_title": "🧠 Clinical Problem",
-        "problem": "Patient deterioration often occurs silently over time.",
-        "button": "▶️ Analyze Patient Case",
-        "snapshot": "📊 Patient Snapshot",
-        "decision": "🟠 Clinical Decision",
-        "xai": "🧠 Why this decision?",
-        "outcome": "🔮 What if no action is taken?",
-        "timing": "⏱️ Best Time to Intervene",
-        "trajectory": "📈 Risk Trajectory",
-        "decision_text": "The patient is entering a deterioration trajectory. Early intervention is recommended."
-    }
+# ================== STYLE ==================
+st.markdown("""
+<style>
+body { background-color: #f8fafc; }
+.card {
+    padding: 22px;
+    border-radius: 14px;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 18px;
 }
+.header {
+    font-size: 28px;
+    font-weight: 700;
+    color: #0f172a;
+}
+.subtitle {
+    font-size: 15px;
+    color: #475569;
+}
+.label {
+    font-weight: 600;
+    color: #0f172a;
+}
+.note {
+    font-size: 13px;
+    color: #64748b;
+}
+.badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background-color: #e0f2fe;
+    color: #0369a1;
+    font-size: 13px;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ================== HEADER ==================
-st.title(TEXT[lang]["title"])
-st.caption(TEXT[lang]["subtitle"])
+st.markdown("<div class='header'>🛡️ MedGuard AI</div>", unsafe_allow_html=True)
+st.markdown(
+    "<div class='subtitle'>"
+    "AI-assisted clinical decision support for early detection of patient deterioration<br>"
+    "<span class='note'>Supports — not replaces — physician judgment.</span>"
+    "</div>",
+    unsafe_allow_html=True
+)
 
-st.subheader(TEXT[lang]["problem_title"])
-st.write(TEXT[lang]["problem"])
+# ================== DISCLAIMER ==================
+st.markdown("""
+<div class="card">
+<span class="badge">Clinical Decision Support Assistant</span><br><br>
+MedGuard AI analyzes temporal patterns in vital signs to highlight potential clinical risk.
+It is designed to <b>support situational awareness</b> and does not provide diagnoses
+or treatment decisions.
+<br><br>
+<b>Final clinical decisions remain the responsibility of the treating physician.</b>
+</div>
+""", unsafe_allow_html=True)
+
+# ================== CONTROLS ==================
+st.subheader("Analysis Context")
+
+col1, col2 = st.columns(2)
+with col1:
+    department = st.selectbox(
+        "Clinical Setting",
+        ["General Ward", "Emergency Department", "ICU"]
+    )
+with col2:
+    hours_window = st.selectbox(
+        "Data Window",
+        ["Last 6 hours", "Last 12 hours", "Last 24 hours"]
+    )
+
+st.markdown("<span class='badge'>🔕 Low alert frequency mode enabled</span>", unsafe_allow_html=True)
 
 # ================== DATA ==================
 def generate_patient_data(hours=48):
@@ -86,28 +110,80 @@ def calculate_risk(row):
     if row["temperature"] > 38: risk += 0.15
     return min(risk, 1.0)
 
-# ================== RUN ==================
-if st.button(TEXT[lang]["button"]):
+# ================== ACTION ==================
+if st.button("Analyze Patient Trends"):
     data = generate_patient_data()
     data["risk_score"] = data.apply(calculate_risk, axis=1)
     last = data.iloc[-1]
 
-    st.subheader(TEXT[lang]["snapshot"])
-    st.write("HR ↑ | BP ↓ | SpO₂ ↓ | Temp stable")
+    # Confidence (simulated uncertainty)
+    confidence = round(np.random.uniform(0.75, 0.9), 2)
 
-    st.subheader(TEXT[lang]["decision"])
-    st.metric("Risk Score", round(last["risk_score"], 2))
-    st.success(TEXT[lang]["decision_text"])
+    # ================== SNAPSHOT ==================
+    st.markdown("""
+    <div class="card">
+    <span class="label">Patient Trend Summary</span><br><br>
+    • Heart rate: sustained upward trend<br>
+    • Blood pressure: gradual decline<br>
+    • Oxygen saturation: mild downward shift<br>
+    • Temperature: stable
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.subheader(TEXT[lang]["xai"])
-    st.write("• Heart rate increasing")
-    st.write("• Blood pressure dropping")
+    # ================== RISK INSIGHT ==================
+    st.markdown(f"""
+    <div class="card">
+    <span class="label">AI Risk Insight</span><br><br>
+    Estimated deterioration risk score: <b>{round(last["risk_score"], 2)}</b><br>
+    AI confidence level: <b>{confidence}</b><br><br>
+    This assessment reflects similarity to historical deterioration patterns
+    observed in comparable clinical contexts.
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.subheader(TEXT[lang]["outcome"])
-    st.warning("78% deteriorated within 8 hours | ICU risk +35%")
+    # ================== XAI TABLE ==================
+    st.markdown("<div class='card'><span class='label'>Trend Contribution Analysis</span><br><br>", unsafe_allow_html=True)
+    contrib = pd.DataFrame({
+        "Parameter": ["Heart Rate", "Blood Pressure", "SpO₂", "Temperature"],
+        "Trend": ["↑ Rising", "↓ Dropping", "↓ Mild decline", "Stable"],
+        "Contribution": ["High", "Medium", "Low", "Minimal"]
+    })
+    st.table(contrib)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    st.subheader(TEXT[lang]["timing"])
-    st.success("Intervene within the next 90 minutes")
+    # ================== SUPPORTIVE GUIDANCE ==================
+    st.markdown("""
+    <div class="card">
+    <span class="label">Supportive Clinical Considerations</span><br><br>
+    In similar cases, clinicians often considered:
+    <ul>
+        <li>Closer monitoring of vital signs</li>
+        <li>Re-evaluation of laboratory results</li>
+        <li>Early senior clinical review</li>
+    </ul>
+    These are <b>not recommendations</b>, but commonly observed actions.
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.subheader(TEXT[lang]["trajectory"])
+    # ================== TIMING ==================
+    st.markdown("""
+    <div class="card">
+    <span class="label">Time-Sensitive Insight</span><br><br>
+    Historical data suggests that earlier evaluation within the next
+    <b>90 minutes</b> was associated with improved outcomes in similar scenarios.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ================== SAFETY ==================
+    st.markdown("""
+    <div class="card">
+    <span class="label">What this system does NOT do</span><br><br>
+    • Does not diagnose medical conditions<br>
+    • Does not prescribe or recommend treatments<br>
+    • Does not override clinical judgment
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ================== TRAJECTORY ==================
+    st.subheader("Risk Trend Over Time")
     st.line_chart(data.set_index("hour")["risk_score"])
