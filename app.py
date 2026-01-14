@@ -68,29 +68,56 @@ st.title("MedGuard AI")
 st.caption("Continuous patient monitoring • AI-assisted early clinical alerts")
 
 # =========================
+# Patient Scenario Selector
+# =========================
+scenario = st.selectbox(
+    "Select patient condition",
+    [
+        "Patient 1 – Stable",
+        "Patient 2 – Early deterioration",
+        "Patient 3 – Severe deterioration"
+    ]
+)
+
+# =========================
 # Data Simulation
 # =========================
-def generate_patient_data(hours=48):
+def generate_patient_data(hours=48, level="stable"):
     np.random.seed(42)
+
     df = pd.DataFrame({
         "hour": range(hours),
-        "heart_rate": np.random.normal(85, 8, hours),
-        "systolic_bp": np.random.normal(120, 10, hours),
-        "spo2": np.random.normal(97, 1.2, hours),
-        "temperature": np.random.normal(37, 0.3, hours)
+        "heart_rate": np.random.normal(78, 5, hours),
+        "systolic_bp": np.random.normal(125, 8, hours),
+        "spo2": np.random.normal(98, 1, hours),
+        "temperature": np.random.normal(36.8, 0.2, hours)
     })
-    df.loc[30:, "heart_rate"] += np.linspace(0, 25, hours - 30)
-    df.loc[30:, "systolic_bp"] -= np.linspace(0, 30, hours - 30)
-    df.loc[30:, "spo2"] -= np.linspace(0, 5, hours - 30)
+
+    if level == "early":
+        df.loc[28:, "heart_rate"] += np.linspace(0, 18, hours - 28)
+        df.loc[28:, "systolic_bp"] -= np.linspace(0, 18, hours - 28)
+        df.loc[28:, "spo2"] -= np.linspace(0, 3, hours - 28)
+
+    if level == "severe":
+        df.loc[20:, "heart_rate"] += np.linspace(5, 35, hours - 20)
+        df.loc[20:, "systolic_bp"] -= np.linspace(5, 45, hours - 20)
+        df.loc[20:, "spo2"] -= np.linspace(2, 8, hours - 20)
+        df.loc[20:, "temperature"] += np.linspace(0.2, 1.2, hours - 20)
+
     return df
 
-data = generate_patient_data()
+if "Stable" in scenario:
+    data = generate_patient_data(level="stable")
+elif "Early" in scenario:
+    data = generate_patient_data(level="early")
+else:
+    data = generate_patient_data(level="severe")
 
 # =========================
 # ML Model
 # =========================
 X = data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
-y = (X["heart_rate"] > 100).astype(int)
+y = ((X["heart_rate"] > 100) | (X["spo2"] < 94)).astype(int)
 
 model = LogisticRegression()
 model.fit(X, y)
@@ -101,10 +128,10 @@ current_risk = data.iloc[-1]["risk"]
 # =========================
 # Risk Level
 # =========================
-if current_risk < 0.4:
+if current_risk < 0.35:
     level = "Low Risk"
     badge = "badge-low"
-elif current_risk < 0.7:
+elif current_risk < 0.65:
     level = "Moderate Risk"
     badge = "badge-med"
 else:
@@ -117,47 +144,45 @@ else:
 col1, col2 = st.columns([1.2, 2])
 
 with col1:
-    # ---- Risk Snapshot ----
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.subheader("Risk Snapshot")
     st.metric("Current Risk Probability", f"{current_risk:.2f}")
     st.markdown(f"<div class='{badge}'>{level}</div>", unsafe_allow_html=True)
 
-    with st.expander("What does this risk level indicate?"):
+    with st.expander("What does this mean?"):
         st.markdown("""
-        This probability reflects the likelihood of early clinical deterioration
-        based on temporal patterns across multiple vital signs.
-        It is not a diagnosis.
+        This score reflects the probability of patient deterioration
+        based on evolving vital sign patterns over time.
         """)
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # ---- Alert ----
-    st.markdown("<div class='alert'>", unsafe_allow_html=True)
-    st.markdown("""
-    **Early Clinical Alert**  
-    Patient trajectory shows early signs of deterioration.
-    """)
-    with st.expander("Why was this alert triggered?"):
+    if level != "Low Risk":
+        st.markdown("<div class='alert'>", unsafe_allow_html=True)
         st.markdown("""
-        • Sustained increase in heart rate  
-        • Declining systolic blood pressure  
-        • Progressive reduction in oxygen saturation  
-        • Similar patterns observed in prior ICU deterioration cases
+        **Clinical Alert**  
+        Patient trajectory shows signs of deterioration.
         """)
-    st.markdown("</div>", unsafe_allow_html=True)
+        with st.expander("Why was this alert triggered?"):
+            st.markdown("""
+            • Rising heart rate trend  
+            • Declining blood pressure  
+            • Oxygen saturation reduction  
+            • Pattern similarity to historical ICU cases
+            """)
+        st.markdown("</div>", unsafe_allow_html=True)
 
 with col2:
-    # ---- Risk Trend ----
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.subheader("Risk Trend Over Time")
     st.line_chart(data.set_index("hour")["risk"])
 
     with st.expander("How to interpret this trend?"):
         st.markdown("""
-        A rising trajectory indicates accumulating risk over time.
-        The model focuses on trend behavior rather than isolated values.
+        Stable patients maintain flat risk trajectories,
+        while early and severe cases show progressive risk escalation.
         """)
+
     st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
@@ -172,8 +197,8 @@ st.bar_chart(coeff)
 
 with st.expander("Model explanation"):
     st.markdown("""
-    Heart rate and systolic blood pressure contributed most to the current risk signal,
-    indicating early hemodynamic instability patterns.
+    Heart rate and systolic blood pressure trends are the strongest contributors
+    differentiating stable, early, and severe deterioration trajectories.
     """)
 
 st.markdown("</div>", unsafe_allow_html=True)
