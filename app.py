@@ -86,7 +86,7 @@ h1, h2, h3 { color: #f9fafb; }
 # Header
 # ===============================
 st.markdown("""
-<h1>🛡️ MedGuard AI</h1>
+<h1> MedGuard AI</h1>
 <p class="note">
 Clinical Early Warning System (Decision Support Only)<br>
 This system assists clinicians in identifying early physiological deterioration.
