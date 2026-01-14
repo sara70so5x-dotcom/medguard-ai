@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # =========================
-# Clinical Style (Stable)
+# Clinical Style
 # =========================
 st.markdown("""
 <style>
@@ -58,28 +58,20 @@ h1, h2, h3 {
 .alert {
     background-color: #111827;
     border-left: 4px solid #fbbf24;
-    padding: 16px;
+    padding: 14px;
     border-radius: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================
-# System Header (ربطه بالجهاز)
+# Header (مختصر)
 # =========================
-st.title("MedGuard AI – Continuous Patient Monitoring System")
-st.caption("Real-time physiological signals • AI-assisted early clinical alerts")
-
-st.markdown("""
-<div class="note">
-This system continuously monitors vital signs from bedside and wearable devices
-to provide early awareness of patient deterioration.
-It supports — and does not replace — clinical judgment.
-</div>
-""", unsafe_allow_html=True)
+st.title("MedGuard AI")
+st.caption("Continuous patient monitoring • AI-assisted early alerts")
 
 # =========================
-# Simulated Time-Series Data
+# Data Simulation
 # =========================
 def generate_patient_data(hours=48):
     np.random.seed(42)
@@ -98,7 +90,7 @@ def generate_patient_data(hours=48):
 data = generate_patient_data()
 
 # =========================
-# ML Model (Scikit-learn)
+# ML Model
 # =========================
 X = data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
 y = (X["heart_rate"] > 100).astype(int)
@@ -110,7 +102,7 @@ data["risk"] = model.predict_proba(X)[:, 1]
 current_risk = data.iloc[-1]["risk"]
 
 # =========================
-# Risk Interpretation
+# Risk Level
 # =========================
 if current_risk < 0.4:
     level = "Low Risk"
@@ -129,83 +121,56 @@ col1, col2 = st.columns([1.2, 2])
 
 with col1:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Clinical Trajectory Insight")
+    st.subheader("Risk Snapshot")
     st.metric("Current Risk Probability", f"{current_risk:.2f}")
     st.markdown(f"<div class='{badge}'>{level}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # ===== Alert Notification =====
+    # Alert (مختصر)
     st.markdown("<div class='alert'>", unsafe_allow_html=True)
     st.markdown("""
     **Early Clinical Alert**  
-    Patient trajectory is deviating from stable patterns.  
-    In similar ICU cases, earlier clinical review **6–8 hours sooner**
-    was associated with improved outcomes.
-    
-    *This is an awareness alert, not a treatment directive.*
+    Patient trajectory shows early signs of deterioration.  
+    *Earlier review was associated with better outcomes.*
     """)
     st.markdown("</div>", unsafe_allow_html=True)
 
 with col2:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Risk Evolution Over Time")
+    st.subheader("Risk Trend")
     st.line_chart(data.set_index("hour")["risk"])
     st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
-# Decision Rationale (تفسير القرار)
+# Expandable Sections
 # =========================
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.subheader("Decision Rationale – Why this alert was raised")
+with st.expander("Why was this alert raised?"):
+    st.markdown("""
+    • Rising heart rate over time  
+    • Declining systolic blood pressure  
+    • Gradual reduction in oxygen saturation  
+    • Pattern similarity to prior ICU deterioration cases
+    """)
 
-st.markdown("""
-This alert was triggered due to a **pattern-level change** observed across
-multiple vital signs, rather than a single abnormal reading:
+with st.expander("Explainable AI – Model Insight"):
+    coeff = pd.Series(model.coef_[0], index=X.columns)
+    coeff = coeff.abs().sort_values(ascending=False)
+    st.bar_chart(coeff)
+    st.caption(
+        "Heart rate and blood pressure trends contributed most to the current risk signal."
+    )
 
-- Gradual and sustained increase in heart rate  
-- Concurrent decline in systolic blood pressure  
-- Progressive reduction in oxygen saturation  
-- Trajectory similarity to prior ICU deterioration cases
-""")
-st.markdown("</div>", unsafe_allow_html=True)
-
-# =========================
-# Explainable AI
-# =========================
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.subheader("Explainable AI – Feature Contribution")
-
-coeff = pd.Series(model.coef_[0], index=X.columns)
-coeff = coeff.abs().sort_values(ascending=False)
-
-st.bar_chart(coeff)
-
-st.markdown("""
-**Interpretation:**  
-The model identifies heart rate and systolic blood pressure trends
-as the primary contributors to the current risk signal.
-""")
-st.markdown("</div>", unsafe_allow_html=True)
-
-# =========================
-# Data Sources (Hackathon Aligned)
-# =========================
-st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.subheader("Referenced Clinical Data Sources")
-
-st.markdown("""
-• **PhysioNet Sepsis Challenge 2019** – ICU time-series vital signs  
-• **eICU Collaborative Research Database** – Multi-center ICU validation (future work)  
-• **NIH ChestX-ray14 Dataset** – Multimodal imaging extension (out of current scope)
-""")
-st.markdown("</div>", unsafe_allow_html=True)
+with st.expander("Clinical Data Sources"):
+    st.markdown("""
+    • **PhysioNet Sepsis Challenge 2019** – ICU time-series data  
+    • **eICU Collaborative Research Database** – Multi-center validation  
+    • **NIH ChestX-ray14 Dataset** – Future multimodal expansion
+    """)
 
 # =========================
 # Footer
 # =========================
-st.markdown("""
-<div class="note">
-MedGuard AI demonstrates how explainable machine learning can function
-as an early medical alerting layer within continuous patient monitoring systems.
-</div>
-""", unsafe_allow_html=True)
+st.caption(
+    "MedGuard AI is a clinical decision-support assistant. "
+    "It does not provide diagnoses or treatment recommendations."
+)
