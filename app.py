@@ -3,18 +3,18 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
-# ===============================
-# Page Config (Web App Mode)
-# ===============================
+# =================================
+# Page Config (App-like)
+# =================================
 st.set_page_config(
     page_title="MedGuard AI",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# ===============================
-# Hide Streamlit UI
-# ===============================
+# =================================
+# Hide Streamlit Branding
+# =================================
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;}
@@ -70,9 +70,9 @@ h1, h2, h3 {
 </style>
 """, unsafe_allow_html=True)
 
-# ===============================
-# App Header (Website Style)
-# ===============================
+# =================================
+# App Header
+# =================================
 st.markdown("""
 <h1 style="margin-bottom:0;">MedGuard AI</h1>
 <p class="note">
@@ -80,9 +80,9 @@ AI-assisted early warning system for continuous patient monitoring
 </p>
 """, unsafe_allow_html=True)
 
-# ===============================
+# =================================
 # Scenario Selector
-# ===============================
+# =================================
 scenario = st.selectbox(
     "Patient Scenario",
     [
@@ -92,9 +92,9 @@ scenario = st.selectbox(
     ]
 )
 
-# ===============================
+# =================================
 # Patient Data Generator
-# ===============================
+# =================================
 def generate_patient_data(hours=48, mode="stable"):
     np.random.seed(42)
     df = pd.DataFrame({
@@ -118,16 +118,16 @@ def generate_patient_data(hours=48, mode="stable"):
 
     return df
 
-if "Stable" in scenario:
-    data = generate_patient_data("stable")
-elif "Early" in scenario:
-    data = generate_patient_data("early")
+if scenario == "Stable Patient":
+    data = generate_patient_data(mode="stable")
+elif scenario == "Early Deterioration":
+    data = generate_patient_data(mode="early")
 else:
-    data = generate_patient_data("severe")
+    data = generate_patient_data(mode="severe")
 
-# ===============================
-# Train Model (Global)
-# ===============================
+# =================================
+# Global Training Data
+# =================================
 def generate_training_data(samples=400):
     rows = []
     np.random.seed(1)
@@ -138,6 +138,7 @@ def generate_training_data(samples=400):
         temp = np.random.normal(37, 0.6)
         label = int((hr > 100) or (bp < 95) or (spo2 < 92))
         rows.append([hr, bp, spo2, temp, label])
+
     return pd.DataFrame(
         rows,
         columns=["heart_rate", "systolic_bp", "spo2", "temperature", "label"]
@@ -150,16 +151,16 @@ y_train = train["label"]
 model = LogisticRegression()
 model.fit(X_train, y_train)
 
-# ===============================
-# Prediction
-# ===============================
+# =================================
+# Risk Prediction
+# =================================
 X_patient = data[["heart_rate", "systolic_bp", "spo2", "temperature"]]
 data["risk"] = model.predict_proba(X_patient)[:, 1]
 current_risk = data.iloc[-1]["risk"]
 
-# ===============================
+# =================================
 # Risk Levels
-# ===============================
+# =================================
 if current_risk < 0.35:
     level = "Stable"
     badge = "badge-low"
@@ -173,9 +174,9 @@ else:
     badge = "badge-high"
     alert_class = "alert-high"
 
-# ===============================
+# =================================
 # Layout
-# ===============================
+# =================================
 left, right = st.columns([1.2, 2])
 
 with left:
@@ -187,12 +188,32 @@ with left:
 
     if level != "Stable":
         st.markdown(f"<div class='{alert_class}'>", unsafe_allow_html=True)
-        st.markdown(f"**{level} Alert**  
-Patient trajectory indicates physiological instability.")
+        st.markdown(f"""
+**{level} Alert**  
+Patient trajectory indicates physiological instability.
+""")
         st.markdown("</div>", unsafe_allow_html=True)
 
 with right:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.subheader("Risk Timeline")
     st.line_chart(data.set_index("hour")["risk"])
+
+    with st.expander("What is happening to the patient?"):
+        if level == "Stable":
+            st.markdown("""
+Vital signs remain within expected physiological ranges.
+No progressive stress patterns are currently observed.
+""")
+        elif level == "Early Deterioration":
+            st.markdown("""
+Gradual heart rate elevation and subtle blood pressure decline
+suggest early physiological stress and increasing vulnerability.
+""")
+        else:
+            st.markdown("""
+Rapid heart rate escalation, hypotension, oxygen desaturation,
+and rising temperature indicate failure of physiological compensation.
+""")
+
     st.markdown("</div>", unsafe_allow_html=True)
